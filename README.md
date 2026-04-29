@@ -63,19 +63,3 @@ npm test
 2. Click `Connect`.
 3. Choose `USB` or `Bluetooth`.
 4. Select the meter from the browser prompt.
-
-Connecting again after a capture asks before clearing the previous live data.
-
-## Defaults
-
-- Theme: light.
-- Capture rate: 100 samples/s.
-- Visible signals: VBUS, IBUS, PBUS, D+, D-.
-- Thresholds: VBUS 24 V, IBUS 7 A, PBUS 168 W.
-
-## Notes
-
-- Settings are stored in browser local storage.
-- JSON record import supports the compact OpenFNB v2 format.
-- WebHID is not available in Firefox or Safari.
-- Bluetooth currently focuses on live telemetry; USB provides the most complete signal set.
