@@ -10,8 +10,8 @@ export function ProtocolAnalysisPanel({ measurements }: ProtocolAnalysisPanelPro
   const summary = analyzeProtocolSession(measurements);
 
   return (
-    <Card>
-      <CardContent>
+    <Card sx={{ minWidth: 0 }}>
+      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
         <Typography variant="h3">Protocol analysis</Typography>
         {!summary ? (
           <Typography color="text.secondary" sx={{ mt: 2 }} variant="body2">
@@ -31,7 +31,7 @@ export function ProtocolAnalysisPanel({ measurements }: ProtocolAnalysisPanelPro
               {summary.dominant ? <Chip label={`Session: ${summary.dominant.label}`} size="small" variant="outlined" /> : null}
             </Stack>
 
-            <Typography color="text.secondary" variant="body2">
+            <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="body2">
               {summary.current.detail}
             </Typography>
 
@@ -57,7 +57,9 @@ export function ProtocolAnalysisPanel({ measurements }: ProtocolAnalysisPanelPro
                   justifyContent="space-between"
                   spacing={2}
                 >
-                  <Typography variant="body2">{transition.label}</Typography>
+                  <Typography sx={{ minWidth: 0, overflowWrap: "anywhere" }} variant="body2">
+                    {transition.label}
+                  </Typography>
                   <Typography className="metric-value" color="text.secondary" variant="body2">
                     +{transition.atSeconds.toFixed(2)} s
                   </Typography>

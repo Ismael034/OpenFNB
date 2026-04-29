@@ -524,8 +524,8 @@ export function WaveformPanel({
   }, [onClearCapture, sampledMeasurements, triggerAction, triggerConfig, triggerEnabled, triggerSingleShot]);
 
   return (
-    <Card sx={{ minHeight: 500 }}>
-      <CardContent>
+    <Card sx={{ minHeight: 500, minWidth: 0 }}>
+      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
         <Stack
           alignItems={{ xs: "flex-start", lg: "center" }}
           direction={{ xs: "column", lg: "row" }}
@@ -535,7 +535,7 @@ export function WaveformPanel({
           <Box>
             <Typography variant="h3">Live waveform</Typography>
           </Box>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 0.5 }} useFlexGap>
             <Button
               onClick={(event) => setTriggerMenuAnchorEl(event.currentTarget)}
               size="small"
@@ -604,7 +604,7 @@ export function WaveformPanel({
           disableScrollLock
           onClose={() => setTriggerMenuAnchorEl(null)}
           open={triggerMenuOpen}
-          slotProps={{ paper: { sx: { p: 1.5, minWidth: 320 } } }}
+          slotProps={{ paper: { sx: { maxWidth: "calc(100vw - 24px)", minWidth: { xs: "calc(100vw - 24px)", sm: 320 }, p: 1.5 } } }}
         >
           <Stack spacing={1.25}>
             <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={1}>
@@ -754,7 +754,14 @@ export function WaveformPanel({
             setFollowTime(true);
             setManualDomain(null);
           }}
-          sx={{ cursor: isDragging ? "grabbing" : "grab", height: 420, mt: 3, position: "relative", userSelect: "none" }}
+          sx={{
+            cursor: isDragging ? "grabbing" : "grab",
+            height: { xs: 360, sm: 420 },
+            mt: { xs: 2, sm: 3 },
+            position: "relative",
+            userSelect: "none",
+            width: "100%"
+          }}
         >
           <Box
             sx={{

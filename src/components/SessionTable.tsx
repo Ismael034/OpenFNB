@@ -19,10 +19,10 @@ export function SessionTable({ measurements }: SessionTableProps) {
   const rows = [...measurements].slice(-12).reverse();
 
   return (
-    <Card>
-      <CardContent>
+    <Card sx={{ minWidth: 0 }}>
+      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
         <Typography variant="h3">Recent samples</Typography>
-        <TableContainer sx={{ mt: 2 }}>
+        <TableContainer sx={{ maxWidth: "100%", mt: 2, overflowX: "auto" }}>
           <Table size="small">
             <TableHead>
               <TableRow>

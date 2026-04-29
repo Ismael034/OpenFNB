@@ -10,7 +10,7 @@ type MetricCardProps = {
 
 export function MetricCard({ label, value, unit, accent, footnote }: MetricCardProps) {
   return (
-    <Card sx={{ height: "100%" }}>
+    <Card sx={{ height: "100%", minWidth: 0 }}>
       <CardContent
         sx={{
           height: "100%",
@@ -34,9 +34,11 @@ export function MetricCard({ label, value, unit, accent, footnote }: MetricCardP
               alignItems: "baseline",
               color: accent,
               display: "flex",
-              fontSize: 28,
+              fontSize: { xs: 24, sm: 28 },
               fontWeight: 600,
               lineHeight: 1.1,
+              minWidth: 0,
+              overflowWrap: "anywhere",
               textAlign: "left"
             }}
           >
