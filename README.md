@@ -17,6 +17,7 @@ OpenFNB is a web dashboard for FNIRSI USB power meters. It connects from Chrome 
 - Protocol analysis for D+/D- charging signatures.
 - Threshold alarms for VBUS, IBUS, and PBUS.
 - CSV export, compact JSON record export/import, and waveform PNG export.
+- FNB58 bootloader firmware upload for `.ufn`/`.unf` firmware files.
 - Light/dark theme and saved app defaults.
 
 ## Supported Devices
@@ -31,6 +32,10 @@ USB/WebHID:
 Bluetooth:
 
 - FNB58-style BLE telemetry (tested)
+
+Firmware upgrade:
+
+- FNIRSI FNB58 bootloader mode, VID `0x0483`, PID `0x0038`.
 
 ## Requirements
 
@@ -65,6 +70,13 @@ npm test
 4. Select the meter from the browser prompt.
 
 Connecting again after a capture asks before clearing the previous live data.
+
+## Firmware Upgrade
+
+1. Put the FNB58 into bootloader mode.
+2. Click `Connect`, choose `USB`, and select the bootloader device from the browser prompt.
+3. Select a `.ufn` or `.unf` firmware file in the firmware dialog.
+4. Click `Upgrade`.
 
 ## Defaults
 

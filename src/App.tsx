@@ -17,6 +17,7 @@ import {
   Grid,
   IconButton,
   InputAdornment,
+  LinearProgress,
   Menu,
   MenuItem,
   Stack,
@@ -36,6 +37,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import SystemUpdateAltRoundedIcon from "@mui/icons-material/SystemUpdateAltRounded";
 import { MetricCard } from "./components/MetricCard";
 import { ProtocolAnalysisPanel } from "./components/ProtocolAnalysisPanel";
 import { SessionTable } from "./components/SessionTable";
@@ -45,6 +47,7 @@ import { downloadCsv } from "./lib/csv";
 import { downloadRecordBundle, importRecordBundle, snapshotRecord } from "./lib/records";
 import type { TriggerDirection, TriggerSignal } from "./lib/protocolAnalysis";
 import { DEFAULT_VISIBLE_SIGNALS, SIGNAL_DEFINITIONS, SIGNALS_BY_KEY, type SignalKey } from "./lib/signals";
+import { useFirmwareUpgrade, type FirmwareUpgradePhase } from "./hooks/useFirmwareUpgrade";
 import { useUsbMeter } from "./hooks/useUsbMeter";
 import type { Measurement, RecordSlotKey, SavedRecord, SessionStats } from "./types";
 import type { AppThemeMode } from "./theme";
@@ -104,6 +107,10 @@ const ACTION_BUTTON_FRAME_SX = {
   minHeight: 40,
   verticalAlign: "middle"
 };
+const MOBILE_GRID_SX = {
+  m: 0,
+  width: "100%"
+};
 
 type SettingsDraft = {
   captureSamplesPerSecond: number;
@@ -142,6 +149,7 @@ export default function App({ defaultThemeMode, onDefaultThemeModeChange, onThem
     setCaptureSamplesPerSecond,
     togglePaused
   } = useUsbMeter();
+  const { firmwareUpgrade, resetFirmwareUpgrade, startFirmwareUpgrade } = useFirmwareUpgrade();
   const [defaultVisibleSignals, setDefaultVisibleSignals] = useState<SignalKey[]>(() => loadVisibleSignalsDefault());
   const [visibleSignals, setVisibleSignals] = useState<SignalKey[]>(() => loadVisibleSignalsDefault());
   const [signalsAnchorEl, setSignalsAnchorEl] = useState<HTMLElement | null>(null);
@@ -166,8 +174,12 @@ export default function App({ defaultThemeMode, onDefaultThemeModeChange, onThem
   const [triggerThreshold, setTriggerThreshold] = useState(() => loadTriggerThresholdDefault());
   const [triggerHoldoffMs, setTriggerHoldoffMs] = useState(() => loadTriggerHoldoffDefault());
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const firmwareInputRef = useRef<HTMLInputElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const previousAlarmSignatureRef = useRef("");
+  const [firmwareDialogOpen, setFirmwareDialogOpen] = useState(false);
+  const [firmwareDevice, setFirmwareDevice] = useState<HIDDevice | null>(null);
+  const [firmwareFile, setFirmwareFile] = useState<File | null>(null);
 
   const activeMeasurements = useMemo(() => {
     if (activeSource === "live") {
@@ -191,6 +203,8 @@ export default function App({ defaultThemeMode, onDefaultThemeModeChange, onThem
     [records, activeSource, activeMeasurements]
   );
   const hasExportableRecords = Boolean(exportableRecords.main || exportableRecords.aux);
+  const firmwareBusy = isFirmwareUpgradeBusy(firmwareUpgrade.phase);
+  const firmwareDialogLocked = Boolean(firmwareDevice) && firmwareUpgrade.phase !== "done" && firmwareUpgrade.phase !== "error";
   const waveformStartMs =
     activeSource === "live" ? sessionStartMs ?? activeMeasurements[0]?.timestampMs ?? null : activeMeasurements[0]?.timestampMs ?? null;
 
@@ -304,7 +318,7 @@ function openSettings() {
       return;
     }
 
-    await connectWebHid();
+    await connectUsbDevice();
   };
 
   const openConnectMenu = (event: MouseEvent<HTMLElement>) => {
@@ -325,29 +339,71 @@ function openSettings() {
       return;
     }
 
-    await connectWebHid();
+    await connectUsbDevice();
+  };
+
+  const openFirmwareDialogForDevice = (device: HIDDevice) => {
+    resetFirmwareUpgrade();
+    setFirmwareDevice(device);
+    setFirmwareFile(null);
+    setFirmwareDialogOpen(true);
+  };
+
+  const closeFirmwareDialog = () => {
+    if (firmwareBusy || firmwareDialogLocked) {
+      return;
+    }
+
+    setFirmwareDevice(null);
+    setFirmwareDialogOpen(false);
+  };
+
+  const handleFirmwareFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setFirmwareFile(file);
+    resetFirmwareUpgrade();
+    event.target.value = "";
+  };
+
+  const startSelectedFirmwareUpgrade = async () => {
+    if (!firmwareFile || firmwareBusy) {
+      return;
+    }
+
+    if (isConnected) {
+      await disconnect();
+    }
+
+    await startFirmwareUpgrade(firmwareFile, { device: firmwareDevice ?? undefined });
+  };
+
+  const connectUsbDevice = async () => {
+    const result = await connectWebHid();
+    if (result.type === "bootloader") {
+      openFirmwareDialogForDevice(result.device);
+    }
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
+    <Box sx={{ backgroundColor: "background.default", minHeight: "100vh", overflowX: "hidden", width: "100%" }}>
       <AppBar
         color="transparent"
         elevation={0}
         position="sticky"
         sx={{ backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
-        <Toolbar sx={{ minHeight: "56px !important", px: { xs: 2, sm: 3 } }}>
+        <Toolbar sx={{ minHeight: "56px !important", px: { xs: 1.5, sm: 3 } }}>
           <Stack
             alignItems="center"
             direction="row"
             justifyContent="space-between"
-            spacing={2}
-            sx={{ width: "100%" }}
+            spacing={{ xs: 1, sm: 2 }}
+            sx={{ minWidth: 0, width: "100%" }}
           >
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">OpenFNB</Typography>
             </Box>
-            <Stack alignItems="center" direction="row" spacing={0.5} sx={{ minWidth: 172 }}>
+            <Stack alignItems="center" direction="row" spacing={0.5} sx={{ flexShrink: 0, minWidth: { xs: 0, sm: 172 } }}>
               <Chip
                 color={status === "error" ? "error" : isConnected ? "success" : "default"}
                 label={isConnected ? "Connected" : status === "connecting" ? "Connecting" : "Idle"}
@@ -374,9 +430,9 @@ function openSettings() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ pb: 4, pt: 3 }}>
-        <Stack spacing={3}>
-          <Grid container spacing={2.25}>
+      <Container maxWidth="xl" sx={{ pb: { xs: 3, sm: 4 }, pt: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 3 } }}>
+        <Stack spacing={{ xs: 2, sm: 3 }} sx={{ minWidth: 0 }}>
+          <Grid container spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
             <Grid item xs={12}>
               <Card>
                 <CardContent sx={{ p: 2 }}>
@@ -386,7 +442,7 @@ function openSettings() {
                         alignItems: { xs: "stretch", lg: "center" },
                         display: "flex",
                         flexDirection: { xs: "column", lg: "row" },
-                        gap: 2,
+                        gap: { xs: 1.25, sm: 2 },
                         justifyContent: "space-between"
                       }}
                     >
@@ -425,7 +481,14 @@ function openSettings() {
                           </Box>
                         </MuiTooltip>
                       </Stack>
-                      <Stack alignItems="center" direction="row" spacing={0.5} sx={{ minHeight: 40 }}>
+                      <Stack
+                        alignItems="center"
+                        direction="row"
+                        justifyContent={{ xs: "flex-end", sm: "flex-start" }}
+                        spacing={0.5}
+                        sx={{ flexWrap: "wrap", minHeight: 40, rowGap: 0.5 }}
+                        useFlexGap
+                      >
                         <MuiTooltip title="Export">
                           <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
                             <IconButton
@@ -457,6 +520,13 @@ function openSettings() {
                           accept="application/json,.json"
                           onChange={(event) => void handleImport(event, setRecords, setActiveSource, setRecordError)}
                           ref={importInputRef}
+                          type="file"
+                        />
+                        <input
+                          hidden
+                          accept=".ufn,.unf,application/octet-stream"
+                          onChange={handleFirmwareFileChange}
+                          ref={firmwareInputRef}
                           type="file"
                         />
                       </Stack>
@@ -537,7 +607,7 @@ function openSettings() {
             })}
           </Menu>
 
-          <Grid container spacing={2.25}>
+          <Grid container spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
             <Grid item xs={12}>
               <Box
                 sx={{
@@ -564,7 +634,7 @@ function openSettings() {
             </Grid>
           </Grid>
 
-          <Grid container alignItems="stretch" spacing={2.25}>
+          <Grid container alignItems="stretch" spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
             <Grid item lg={9} xs={12}>
               <Stack spacing={2.25} sx={{ height: "100%" }}>
                 <WaveformPanel
@@ -729,10 +799,98 @@ function openSettings() {
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog fullWidth maxWidth="md" onClose={closeSettings} open={settingsOpen}>
+      <Dialog
+        disableEscapeKeyDown={firmwareDialogLocked || firmwareBusy}
+        fullWidth
+        maxWidth="sm"
+        onClose={closeFirmwareDialog}
+        open={firmwareDialogOpen}
+        PaperProps={{ sx: { m: { xs: 1.5, sm: 4 }, width: { xs: "calc(100% - 24px)", sm: "100%" } } }}
+      >
+        <DialogTitle>Firmware Upgrade</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Stack alignItems={{ xs: "stretch", sm: "center" }} direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+              <Button
+                disabled={firmwareBusy}
+                onClick={() => firmwareInputRef.current?.click()}
+                startIcon={<FileUploadRoundedIcon />}
+                variant="outlined"
+              >
+                Select file
+              </Button>
+              <Typography color={firmwareFile ? "text.primary" : "text.secondary"} variant="body2">
+                {firmwareFile ? `${firmwareFile.name} (${formatBytes(firmwareFile.size)})` : "No firmware selected"}
+              </Typography>
+            </Stack>
+
+            <Box>
+              <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2">{firmwareUpgrade.message}</Typography>
+                <Typography className="metric-value" color="text.secondary" variant="body2">
+                  {firmwareUpgrade.progress}%
+                </Typography>
+              </Stack>
+              <LinearProgress
+                sx={{ mt: 1 }}
+                value={firmwareUpgrade.progress}
+                variant={firmwareUpgrade.phase === "selecting" || firmwareUpgrade.phase === "erasing" ? "indeterminate" : "determinate"}
+              />
+            </Box>
+
+            {firmwareUpgrade.totalChunks > 0 && (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <Chip
+                  label={`${firmwareUpgrade.chunksWritten}/${firmwareUpgrade.totalChunks} chunks`}
+                  size="small"
+                  variant="outlined"
+                />
+                <Chip
+                  label={`${formatBytes(firmwareUpgrade.bytesWritten)}/${formatBytes(firmwareUpgrade.totalBytes)}`}
+                  size="small"
+                  variant="outlined"
+                />
+                {firmwareUpgrade.deviceName && <Chip label={firmwareUpgrade.deviceName} size="small" variant="outlined" />}
+              </Stack>
+            )}
+
+            {firmwareUpgrade.phase === "error" && firmwareUpgrade.error && (
+              <Alert severity="error" variant="filled">
+                {firmwareUpgrade.error}
+              </Alert>
+            )}
+
+            {firmwareUpgrade.phase === "done" && (
+              <Alert severity="success" variant="filled">
+                Firmware upload completed.
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={firmwareBusy || firmwareDialogLocked} onClick={closeFirmwareDialog} variant="outlined">
+            Close
+          </Button>
+          <Button
+            disabled={!firmwareFile || firmwareBusy || !hidSupported || firmwareUpgrade.phase === "done"}
+            onClick={() => void startSelectedFirmwareUpgrade()}
+            startIcon={<SystemUpdateAltRoundedIcon />}
+            variant="contained"
+          >
+            Upgrade
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        fullWidth
+        maxWidth="md"
+        onClose={closeSettings}
+        open={settingsOpen}
+        PaperProps={{ sx: { m: { xs: 1.5, sm: 4 }, width: { xs: "calc(100% - 24px)", sm: "100%" } } }}
+      >
         <DialogTitle>Settings</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={2.5}>
+          <Grid container spacing={{ xs: 2, sm: 2.5 }} sx={MOBILE_GRID_SX}>
             <Grid item md={6} xs={12}>
               <Typography variant="h3">Appearance</Typography>
               <Stack spacing={1.25} sx={{ mt: 1.5 }}>
@@ -938,6 +1096,22 @@ function buildDefaultSettingsDraft(): SettingsDraft {
     triggerThreshold: DEFAULT_TRIGGER_THRESHOLD,
     visibleSignals: DEFAULT_VISIBLE_SIGNALS
   });
+}
+
+function isFirmwareUpgradeBusy(phase: FirmwareUpgradePhase) {
+  return phase === "reading" || phase === "selecting" || phase === "erasing" || phase === "uploading";
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 function buildSettingsDraft(settings: SettingsDraft): SettingsDraft {

@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import type { ConnectionState, Measurement } from "../types";
+import { FNB58_BOOTLOADER_PROFILE } from "../lib/firmwareUpgrade";
 import { buildCommandPacket, createDecoderState, decodeDataReport, findProfile, SUPPORTED_PROFILES } from "../lib/fnirsiProtocol";
 
 export type UsbMeterError = {
@@ -16,11 +17,16 @@ type BluetoothTelemetryState = BluetoothMeasurement & {
   hasWaveformSamples: boolean;
 };
 
+export type WebHidConnectResult =
+  | { type: "bootloader"; device: HIDDevice }
+  | { type: "cancelled" }
+  | { type: "live" };
+
 type UseUsbMeterResult = {
   bluetoothSupported: boolean;
   browserSupported: boolean;
   connectWebBluetooth: () => Promise<void>;
-  connectWebHid: () => Promise<void>;
+  connectWebHid: () => Promise<WebHidConnectResult>;
   clearHistory: () => void;
   status: ConnectionState;
   error: UsbMeterError | null;
@@ -177,14 +183,14 @@ export function useUsbMeter(): UseUsbMeterResult {
     setPaused(false);
   }, []);
 
-  const connectWebHid = useCallback(async () => {
+  const connectWebHid = useCallback(async (): Promise<WebHidConnectResult> => {
     if (!hidSupported) {
       setStatus("error");
       setError({
         title: "WebHID unavailable",
         message: "Use Chrome or Edge on HTTPS or localhost to access HID devices from the browser."
       });
-      return;
+      return { type: "cancelled" };
     }
     await disconnect();
     resetSession();
@@ -192,13 +198,24 @@ export function useUsbMeter(): UseUsbMeterResult {
 
     try {
       const selectedDevices = await navigator.hid!.requestDevice({
-        filters: SUPPORTED_PROFILES.map(({ vendorId, productId }) => ({ vendorId, productId }))
+        filters: [
+          ...SUPPORTED_PROFILES.map(({ vendorId, productId }) => ({ vendorId, productId })),
+          {
+            vendorId: FNB58_BOOTLOADER_PROFILE.vendorId,
+            productId: FNB58_BOOTLOADER_PROFILE.productId
+          }
+        ]
       });
       const hidDevice = selectedDevices[0];
 
       if (!hidDevice) {
         setStatus("idle");
-        return;
+        return { type: "cancelled" };
+      }
+
+      if (isFirmwareBootloaderDevice(hidDevice)) {
+        setStatus("idle");
+        return { type: "bootloader", device: hidDevice };
       }
 
       const profile = findProfile(hidDevice.vendorId, hidDevice.productId);
@@ -309,15 +326,17 @@ export function useUsbMeter(): UseUsbMeterResult {
       };
 
       setStatus("live");
+      return { type: "live" };
     } catch (connectError) {
       if (connectError instanceof DOMException && connectError.name === "NotFoundError") {
         setStatus("idle");
         setError(null);
-        return;
+        return { type: "cancelled" };
       }
 
       setStatus("error");
       setError(normalizeConnectError(connectError));
+      return { type: "cancelled" };
     }
   }, [disconnect, hidSupported, ingestMeasurements, resetSession, resetStreamState]);
 
@@ -540,6 +559,13 @@ function packetToArrayBuffer(packet: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(packet.byteLength);
   new Uint8Array(buffer).set(packet);
   return buffer;
+}
+
+function isFirmwareBootloaderDevice(device: HIDDevice) {
+  return (
+    device.vendorId === FNB58_BOOTLOADER_PROFILE.vendorId &&
+    device.productId === FNB58_BOOTLOADER_PROFILE.productId
+  );
 }
 
 function buildBluetoothCommand(command: number, payload = new Uint8Array()): Uint8Array {
