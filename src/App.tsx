@@ -77,6 +77,8 @@ type AlarmThresholds = {
 type AlarmKey = keyof AlarmThresholds;
 
 const DEFAULT_CAPTURE_SAMPLES_PER_SECOND = 100;
+const BLUETOOTH_CAPTURE_SAMPLES_PER_SECOND_LIMIT = 10;
+const CAPTURE_SAMPLE_RATE_OPTIONS = [1, 2, 5, 10, 20, 50, 100];
 const DEFAULT_TRIGGER_DIRECTION: TriggerDirection = "rising";
 const DEFAULT_TRIGGER_HOLDOFF_MS = 250;
 const DEFAULT_TRIGGER_SIGNAL: TriggerSignal = "dp";
@@ -142,6 +144,7 @@ type AppProps = {
 
 export default function App({ defaultThemeMode, onDefaultThemeModeChange, onThemeModeChange, themeMode }: AppProps) {
   const {
+    activeTransport,
     bluetoothSupported,
     browserSupported,
     connectWebBluetooth,
@@ -215,6 +218,14 @@ export default function App({ defaultThemeMode, onDefaultThemeModeChange, onThem
   const hasExportableRecords = Boolean(exportableRecords.main || exportableRecords.aux);
   const firmwareBusy = isFirmwareUpgradeBusy(firmwareUpgrade.phase);
   const firmwareDialogLocked = Boolean(firmwareDevice) && firmwareUpgrade.phase !== "done" && firmwareUpgrade.phase !== "error";
+  const captureRateOptions = useMemo(
+    () =>
+      activeTransport === "bluetooth"
+        ? CAPTURE_SAMPLE_RATE_OPTIONS.filter((rate) => rate <= BLUETOOTH_CAPTURE_SAMPLES_PER_SECOND_LIMIT)
+        : CAPTURE_SAMPLE_RATE_OPTIONS,
+    [activeTransport]
+  );
+  const effectiveCaptureSamplesPerSecond = limitCaptureRateForTransport(captureSamplesPerSecond, activeTransport);
   const waveformStartMs =
     activeSource === "live" ? sessionStartMs ?? activeMeasurements[0]?.timestampMs ?? null : activeMeasurements[0]?.timestampMs ?? null;
 
@@ -295,7 +306,7 @@ function openSettings() {
     onDefaultThemeModeChange(settingsDraft.themeMode);
     onThemeModeChange(settingsDraft.themeMode);
     setDefaultCaptureSamplesPerSecond(settingsDraft.captureSamplesPerSecond);
-    setCaptureSamplesPerSecond(settingsDraft.captureSamplesPerSecond);
+    setCaptureSamplesPerSecond(limitCaptureRateForTransport(settingsDraft.captureSamplesPerSecond, activeTransport));
     setDefaultTriggerSignal(settingsDraft.triggerSignal);
     setTriggerSignal(settingsDraft.triggerSignal);
     setDefaultTriggerDirection(settingsDraft.triggerDirection);
@@ -642,7 +653,7 @@ function openSettings() {
             <Box sx={{ minWidth: 0 }}>
               <Stack spacing={2.25} sx={{ height: "100%" }}>
                 <WaveformPanel
-                  captureSamplesPerSecond={captureSamplesPerSecond}
+                  captureSamplesPerSecond={effectiveCaptureSamplesPerSecond}
                   measurements={activeMeasurements}
                   onClearCapture={clearHistory}
                   onTogglePaused={togglePaused}
@@ -682,12 +693,14 @@ function openSettings() {
                       select
                       fullWidth
                       label="Capture/s"
-                      onChange={(event) => setCaptureSamplesPerSecond(Number(event.target.value))}
+                      onChange={(event) =>
+                        setCaptureSamplesPerSecond(limitCaptureRateForTransport(Number(event.target.value), activeTransport))
+                      }
                       SelectProps={{ MenuProps: { disableScrollLock: true } }}
                       size="small"
-                      value={captureSamplesPerSecond}
+                      value={effectiveCaptureSamplesPerSecond}
                     >
-                      {[1, 2, 5, 10, 20, 50, 100].map((rate) => (
+                      {captureRateOptions.map((rate) => (
                         <MenuItem key={rate} value={rate}>
                           {rate}
                         </MenuItem>
@@ -933,7 +946,7 @@ function openSettings() {
                   size="small"
                   value={settingsDraft?.captureSamplesPerSecond ?? defaultCaptureSamplesPerSecond}
                 >
-                  {[1, 2, 5, 10, 20, 50, 100].map((rate) => (
+                  {CAPTURE_SAMPLE_RATE_OPTIONS.map((rate) => (
                     <MenuItem key={rate} value={rate}>
                       {rate}
                     </MenuItem>
@@ -1104,6 +1117,14 @@ function buildDefaultSettingsDraft(): SettingsDraft {
 
 function isFirmwareUpgradeBusy(phase: FirmwareUpgradePhase) {
   return phase === "reading" || phase === "selecting" || phase === "erasing" || phase === "uploading";
+}
+
+function limitCaptureRateForTransport(samplesPerSecond: number, activeTransport: "bluetooth" | "usb" | null) {
+  if (activeTransport !== "bluetooth") {
+    return samplesPerSecond;
+  }
+
+  return Math.min(samplesPerSecond, BLUETOOTH_CAPTURE_SAMPLES_PER_SECOND_LIMIT);
 }
 
 function formatBytes(bytes: number) {

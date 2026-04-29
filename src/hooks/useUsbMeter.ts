@@ -17,12 +17,15 @@ type BluetoothTelemetryState = BluetoothMeasurement & {
   hasWaveformSamples: boolean;
 };
 
+type ActiveTransport = "bluetooth" | "usb" | null;
+
 export type WebHidConnectResult =
   | { type: "bootloader"; device: HIDDevice }
   | { type: "cancelled" }
   | { type: "live" };
 
 type UseUsbMeterResult = {
+  activeTransport: ActiveTransport;
   bluetoothSupported: boolean;
   browserSupported: boolean;
   connectWebBluetooth: () => Promise<void>;
@@ -70,6 +73,7 @@ export function useUsbMeter(): UseUsbMeterResult {
   const [sessionStartMs, setSessionStartMs] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
   const [captureSamplesPerSecond, setCaptureSamplesPerSecondState] = useState(20);
+  const [activeTransport, setActiveTransport] = useState<ActiveTransport>(null);
   const sessionRef = useRef<ActiveSession | null>(null);
   const decoderStateRef = useRef(createDecoderState());
   const pendingMeasurementsRef = useRef<Measurement[]>([]);
@@ -178,6 +182,7 @@ export function useUsbMeter(): UseUsbMeterResult {
     }
 
     setStatus("idle");
+    setActiveTransport(null);
     setError(null);
     pausedRef.current = false;
     setPaused(false);
@@ -194,6 +199,7 @@ export function useUsbMeter(): UseUsbMeterResult {
     }
     await disconnect();
     resetSession();
+    setActiveTransport(null);
     setStatus("connecting");
 
     try {
@@ -246,6 +252,7 @@ export function useUsbMeter(): UseUsbMeterResult {
         }
 
         sessionRef.current = null;
+        setActiveTransport(null);
         setStatus("error");
         setError({
           title: "Device disconnected",
@@ -325,16 +332,19 @@ export function useUsbMeter(): UseUsbMeterResult {
         }
       };
 
+      setActiveTransport("usb");
       setStatus("live");
       return { type: "live" };
     } catch (connectError) {
       if (connectError instanceof DOMException && connectError.name === "NotFoundError") {
         setStatus("idle");
+        setActiveTransport(null);
         setError(null);
         return { type: "cancelled" };
       }
 
       setStatus("error");
+      setActiveTransport(null);
       setError(normalizeConnectError(connectError));
       return { type: "cancelled" };
     }
@@ -352,6 +362,7 @@ export function useUsbMeter(): UseUsbMeterResult {
 
     await disconnect();
     resetSession();
+    setActiveTransport(null);
     setStatus("connecting");
 
     try {
@@ -398,6 +409,7 @@ export function useUsbMeter(): UseUsbMeterResult {
 
       const onDisconnected = () => {
         sessionRef.current = null;
+        setActiveTransport(null);
         setStatus("error");
         setError({
           title: "Bluetooth device disconnected",
@@ -513,15 +525,18 @@ export function useUsbMeter(): UseUsbMeterResult {
         }
       };
 
+      setActiveTransport("bluetooth");
       setStatus("live");
     } catch (connectError) {
       if (connectError instanceof DOMException && connectError.name === "NotFoundError") {
         setStatus("idle");
+        setActiveTransport(null);
         setError(null);
         return;
       }
 
       setStatus("error");
+      setActiveTransport(null);
       setError(normalizeBluetoothError(connectError));
     }
   }, [bluetoothSupported, disconnect, ingestMeasurements, resetSession, resetStreamState]);
@@ -536,6 +551,7 @@ export function useUsbMeter(): UseUsbMeterResult {
   }, [resetSession]);
 
   return {
+    activeTransport,
     bluetoothSupported,
     browserSupported,
     connectWebBluetooth,
