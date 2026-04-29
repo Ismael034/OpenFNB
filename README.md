@@ -8,7 +8,7 @@ OpenFNB is a web dashboard for FNIRSI USB power meters. It connects from Chrome 
 
 ![OpenFNB dashboard](docs/openfnb-dashboard.png)
 
-# Why?
+## Why?
 
 You may have noticed that there are already multiple unofficial tools that do a similar thing, so why create another one? Here are my reasons:
 - I wanted a simple, easy-to-use interface.
