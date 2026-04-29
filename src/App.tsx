@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  Grid,
   IconButton,
   InputAdornment,
   LinearProgress,
@@ -107,8 +106,19 @@ const ACTION_BUTTON_FRAME_SX = {
   minHeight: 40,
   verticalAlign: "middle"
 };
-const MOBILE_GRID_SX = {
-  m: 0,
+const PAGE_SECTION_GAP = { xs: 1.5, sm: 2.25 } as const;
+const MAIN_LAYOUT_SX = {
+  display: "grid",
+  gap: PAGE_SECTION_GAP,
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 3fr) minmax(280px, 1fr)" },
+  minWidth: 0,
+  width: "100%"
+};
+const SETTINGS_LAYOUT_SX = {
+  display: "grid",
+  gap: { xs: 2, sm: 2.5 },
+  gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" },
+  minWidth: 0,
   width: "100%"
 };
 
@@ -432,110 +442,106 @@ function openSettings() {
 
       <Container maxWidth="xl" sx={{ pb: { xs: 3, sm: 4 }, pt: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 3 } }}>
         <Stack spacing={{ xs: 2, sm: 3 }} sx={{ minWidth: 0 }}>
-          <Grid container spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent sx={{ p: 2 }}>
-                  <Stack spacing={2}>
-                    <Box
-                      sx={{
-                        alignItems: { xs: "stretch", lg: "center" },
-                        display: "flex",
-                        flexDirection: { xs: "column", lg: "row" },
-                        gap: { xs: 1.25, sm: 2 },
-                        justifyContent: "space-between"
-                      }}
-                    >
-                      <Stack
-                        alignItems={{ xs: "stretch", md: "center" }}
-                        direction={{ xs: "column", md: "row" }}
-                        justifyContent="center"
-                        spacing={1.25}
-                        flexWrap="wrap"
-                        sx={{ minHeight: 40 }}
-                        useFlexGap
-                      >
-                        <MuiTooltip title={isConnected ? "Disconnect meter" : "Connect meter"}>
-                          <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
-                            {isConnected ? (
-                              <Button
-                                onClick={() => void disconnect()}
-                                startIcon={<UsbRoundedIcon />}
-                                sx={{ minWidth: CONNECTION_BUTTON_MIN_WIDTH }}
-                                variant="contained"
-                              >
-                                Disconnect
-                              </Button>
-                            ) : (
-                              <Button
-                                disabled={(!hidSupported && !bluetoothSupported) || status === "connecting"}
-                                endIcon={<KeyboardArrowDownRoundedIcon />}
-                                onClick={openConnectMenu}
-                                startIcon={<UsbRoundedIcon />}
-                                sx={{ minWidth: CONNECTION_BUTTON_MIN_WIDTH }}
-                                variant="contained"
-                              >
-                                Connect
-                              </Button>
-                            )}
-                          </Box>
-                        </MuiTooltip>
-                      </Stack>
-                      <Stack
-                        alignItems="center"
-                        direction="row"
-                        justifyContent={{ xs: "flex-end", sm: "flex-start" }}
-                        spacing={0.5}
-                        sx={{ flexWrap: "wrap", minHeight: 40, rowGap: 0.5 }}
-                        useFlexGap
-                      >
-                        <MuiTooltip title="Export">
-                          <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
-                            <IconButton
-                              aria-label="export data"
-                              disabled={!hasExportableCsv && !hasExportableRecords}
-                              onClick={(event) => setExportAnchorEl(event.currentTarget)}
-                              size="small"
-                            >
-                              <FileDownloadRoundedIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </MuiTooltip>
-                        <MuiTooltip title="Import records">
-                          <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
-                            <IconButton aria-label="import records" onClick={() => importInputRef.current?.click()} size="small">
-                              <FileUploadRoundedIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </MuiTooltip>
-                        <MuiTooltip title="Clear data">
-                          <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
-                            <IconButton aria-label="clear data" onClick={clearHistory} size="small">
-                              <DeleteOutlineRoundedIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </MuiTooltip>
-                        <input
-                          hidden
-                          accept="application/json,.json"
-                          onChange={(event) => void handleImport(event, setRecords, setActiveSource, setRecordError)}
-                          ref={importInputRef}
-                          type="file"
-                        />
-                        <input
-                          hidden
-                          accept=".ufn,.unf,application/octet-stream"
-                          onChange={handleFirmwareFileChange}
-                          ref={firmwareInputRef}
-                          type="file"
-                        />
-                      </Stack>
-                    </Box>
+          <Card>
+            <CardContent sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Box
+                  sx={{
+                    alignItems: { xs: "stretch", lg: "center" },
+                    display: "flex",
+                    flexDirection: { xs: "column", lg: "row" },
+                    gap: { xs: 1.25, sm: 2 },
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <Stack
+                    alignItems={{ xs: "stretch", sm: "flex-start" }}
+                    direction={{ xs: "column", md: "row" }}
+                    justifyContent="flex-start"
+                    spacing={1.25}
+                    flexWrap="wrap"
+                    sx={{ minHeight: 40 }}
+                    useFlexGap
+                  >
+                    <MuiTooltip title={isConnected ? "Disconnect meter" : "Connect meter"}>
+                      <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
+                        {isConnected ? (
+                          <Button
+                            onClick={() => void disconnect()}
+                            startIcon={<UsbRoundedIcon />}
+                            sx={{ minWidth: CONNECTION_BUTTON_MIN_WIDTH }}
+                            variant="contained"
+                          >
+                            Disconnect
+                          </Button>
+                        ) : (
+                          <Button
+                            disabled={(!hidSupported && !bluetoothSupported) || status === "connecting"}
+                            endIcon={<KeyboardArrowDownRoundedIcon />}
+                            onClick={openConnectMenu}
+                            startIcon={<UsbRoundedIcon />}
+                            sx={{ minWidth: CONNECTION_BUTTON_MIN_WIDTH }}
+                            variant="contained"
+                          >
+                            Connect
+                          </Button>
+                        )}
+                      </Box>
+                    </MuiTooltip>
                   </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+                  <Stack
+                    alignItems="center"
+                    direction="row"
+                    justifyContent="flex-start"
+                    spacing={0.5}
+                    sx={{ flexWrap: "wrap", minHeight: 40, rowGap: 0.5 }}
+                    useFlexGap
+                  >
+                    <MuiTooltip title="Export">
+                      <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
+                        <IconButton
+                          aria-label="export data"
+                          disabled={!hasExportableCsv && !hasExportableRecords}
+                          onClick={(event) => setExportAnchorEl(event.currentTarget)}
+                          size="small"
+                        >
+                          <FileDownloadRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </MuiTooltip>
+                    <MuiTooltip title="Import records">
+                      <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
+                        <IconButton aria-label="import records" onClick={() => importInputRef.current?.click()} size="small">
+                          <FileUploadRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </MuiTooltip>
+                    <MuiTooltip title="Clear data">
+                      <Box component="span" sx={ACTION_BUTTON_FRAME_SX}>
+                        <IconButton aria-label="clear data" onClick={clearHistory} size="small">
+                          <DeleteOutlineRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </MuiTooltip>
+                    <input
+                      hidden
+                      accept="application/json,.json"
+                      onChange={(event) => void handleImport(event, setRecords, setActiveSource, setRecordError)}
+                      ref={importInputRef}
+                      type="file"
+                    />
+                    <input
+                      hidden
+                      accept=".ufn,.unf,application/octet-stream"
+                      onChange={handleFirmwareFileChange}
+                      ref={firmwareInputRef}
+                      type="file"
+                    />
+                  </Stack>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
 
           <Menu
             anchorEl={connectAnchorEl}
@@ -607,35 +613,33 @@ function openSettings() {
             })}
           </Menu>
 
-          <Grid container spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  display: "grid",
-                  gap: 2.25,
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    sm: "repeat(auto-fit, minmax(220px, 1fr))"
-                  }
-                }}
-              >
-                {signalCards.map((card) => (
-                  <Box key={card.label} sx={{ minWidth: 0 }}>
-                    <MetricCard
-                      accent={card.accent}
-                      footnote={card.footnote}
-                      label={card.label}
-                      unit={card.unit}
-                      value={card.value}
-                    />
-                  </Box>
-                ))}
+          <Box
+            sx={{
+              display: "grid",
+              gap: PAGE_SECTION_GAP,
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                sm: "repeat(auto-fit, minmax(220px, 1fr))"
+              },
+              minWidth: 0,
+              width: "100%"
+            }}
+          >
+            {signalCards.map((card) => (
+              <Box key={card.label} sx={{ minWidth: 0 }}>
+                <MetricCard
+                  accent={card.accent}
+                  footnote={card.footnote}
+                  label={card.label}
+                  unit={card.unit}
+                  value={card.value}
+                />
               </Box>
-            </Grid>
-          </Grid>
+            ))}
+          </Box>
 
-          <Grid container alignItems="stretch" spacing={{ xs: 1.5, sm: 2.25 }} sx={MOBILE_GRID_SX}>
-            <Grid item lg={9} xs={12}>
+          <Box sx={MAIN_LAYOUT_SX}>
+            <Box sx={{ minWidth: 0 }}>
               <Stack spacing={2.25} sx={{ height: "100%" }}>
                 <WaveformPanel
                   captureSamplesPerSecond={captureSamplesPerSecond}
@@ -657,8 +661,8 @@ function openSettings() {
                 <ProtocolAnalysisPanel measurements={activeMeasurements} />
                 <SessionTable measurements={activeMeasurements} />
               </Stack>
-            </Grid>
-            <Grid item lg={3} xs={12}>
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
               <Card sx={{ height: "100%" }}>
                 <CardContent sx={{ height: "100%" }}>
                   <Typography variant="h3">Session</Typography>
@@ -724,8 +728,8 @@ function openSettings() {
                   </Stack>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Stack>
       </Container>
 
@@ -890,8 +894,8 @@ function openSettings() {
       >
         <DialogTitle>Settings</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={{ xs: 2, sm: 2.5 }} sx={MOBILE_GRID_SX}>
-            <Grid item md={6} xs={12}>
+          <Box sx={SETTINGS_LAYOUT_SX}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">Appearance</Typography>
               <Stack spacing={1.25} sx={{ mt: 1.5 }}>
                 <TextField
@@ -911,9 +915,9 @@ function openSettings() {
                   <MenuItem value="light">Light</MenuItem>
                 </TextField>
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item md={6} xs={12}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">Capture</Typography>
               <Stack spacing={1.25} sx={{ mt: 1.5 }}>
                 <TextField
@@ -936,9 +940,9 @@ function openSettings() {
                   ))}
                 </TextField>
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item md={6} xs={12}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">Trigger Defaults</Typography>
               <Stack spacing={1.25} sx={{ mt: 1.5 }}>
                 <TextField
@@ -1002,9 +1006,9 @@ function openSettings() {
                   value={settingsDraft?.triggerHoldoffMs ?? defaultTriggerHoldoffMs}
                 />
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item md={6} xs={12}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">Default Active Signals</Typography>
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1.5, rowGap: 1 }} useFlexGap>
                 {SIGNAL_DEFINITIONS.map((signal) => {
@@ -1039,9 +1043,9 @@ function openSettings() {
                   );
                 })}
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item md={6} xs={12}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h3">Thresholds</Typography>
               <Stack spacing={1.25} sx={{ mt: 1.5 }}>
                 <ThresholdField
@@ -1063,9 +1067,9 @@ function openSettings() {
                   value={settingsDraft?.thresholds.pbus ?? defaultThresholds.pbus}
                 />
               </Stack>
-            </Grid>
+            </Box>
 
-          </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button
