@@ -8,6 +8,14 @@ OpenFNB is a web dashboard for FNIRSI USB power meters. It connects from Chrome 
 
 ![OpenFNB dashboard](docs/openfnb-dashboard.png)
 
+## Why?
+
+You may have noticed that there are already multiple unofficial tools that do a similar thing, so why create another one? Here are my reasons:
+- I wanted a simple, easy-to-use interface.
+- Something compatible with my phone (Web Bluetooth).
+- Easy to set up, with no backend, just pure frontend.
+- A full feature set, everything the original tool provides is here, including firmware updates.
+
 ## Features
 
 - Live VBUS, IBUS, PBUS, D+, D-, capacity, and energy tracking.
@@ -18,7 +26,7 @@ OpenFNB is a web dashboard for FNIRSI USB power meters. It connects from Chrome 
 - Threshold alarms for VBUS, IBUS, and PBUS.
 - CSV export, compact JSON record export/import, and waveform PNG export.
 - FNB58 bootloader firmware upload for `.ufn`/`.unf` firmware files.
-- Light/dark theme and saved app defaults.
+- Light/dark theme.
 
 ## Supported Devices
 
@@ -69,25 +77,9 @@ npm test
 3. Choose `USB` or `Bluetooth`.
 4. Select the meter from the browser prompt.
 
-Connecting again after a capture asks before clearing the previous live data.
-
 ## Firmware Upgrade
 
 1. Put the FNB58 into bootloader mode.
 2. Click `Connect`, choose `USB`, and select the bootloader device from the browser prompt.
 3. Select a `.ufn` or `.unf` firmware file in the firmware dialog.
 4. Click `Upgrade`.
-
-## Defaults
-
-- Theme: light.
-- Capture rate: 100 samples/s.
-- Visible signals: VBUS, IBUS, PBUS, D+, D-.
-- Thresholds: VBUS 24 V, IBUS 7 A, PBUS 168 W.
-
-## Notes
-
-- Settings are stored in browser local storage.
-- JSON record import supports the compact OpenFNB v2 format.
-- WebHID is not available in Firefox or Safari.
-- Bluetooth currently focuses on live telemetry; USB provides the most complete signal set.
